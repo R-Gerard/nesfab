@@ -1,0 +1,65 @@
+name: Build NESFab
+run-name: 'NESFab Build by @${{ github.actor }} for ${{ github.ref_name }} (${{ github.sha }})'
+on: [push, pull_request]
+env:
+  BUILD_DEPS_MINGW: base-devel g++-mingw-w64 mingw-w64-boost
+  BUILD_DEPS_LINUX: libboost-all-dev
+  BUILD_DEPS_MAC: boost
+
+jobs:
+  windows-x-compile:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: 'pacman --noconfirm -Syyu ; pacman --noconfirm -S ${{ env.BUILD_DEPS_MINGW }}'
+
+#      - name: Compile mingw-w64-boost
+#        run: |
+#          git clone https://github.com/libmingw-w64/libboost-mingw-w64.git /tmp/mingw-boost/
+#          pushd /tmp/mingw-boost/
+#          git submodule update --init --recursive
+#          ./build.debian.sh
+#          echo ----------
+#          ls -la
+#          popd
+
+      - name: Echo Environment Info
+        run: uname -a ; echo ---------- ; gcc --version ; echo ---------- ; env
+
+      - name: Build Windows Executable
+        run: make static ARCH=MINGW_CROSS
+
+  posix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: echo
+      - if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        run: 'sudo apt-get update -qy && sudo apt-get install -qy ${{ env.BUILD_DEPS_LINUX }}'
+      - if: ${{ startsWith(matrix.os, 'macos') }}
+        run: 'brew install --quiet ${{ env.BUILD_DEPS_MAC }}'
+
+      - name: Echo Environment Info
+        run: uname -a ; echo ---------- ; gcc --version ; echo ---------- ; env
+
+#      - name: Build in Release Mode
+#        run: make release
+#
+#      - name: Run Tests
+#        run: make tests
+
